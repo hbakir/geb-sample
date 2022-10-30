@@ -1,0 +1,108 @@
+plugins {
+    id "idea"
+    id "groovy"
+    id "com.github.erdi.webdriver-binaries" version "2.7"
+    id "com.github.erdi.idea-base" version "2.2"
+//    id 'org.springframework.boot' version '2.7.5'
+//    id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+}
+
+//group = 'ch.bakir.proto'
+//version = '0.0.1-SNAPSHOT'
+//sourceCompatibility = '11'
+
+//configurations {
+//    compileOnly {
+//        extendsFrom annotationProcessor
+//    }
+//}
+
+ext {
+    // The drivers we want to use
+    drivers = ["firefox", "chrome", "chromeHeadless"]
+
+    gebVersion = '6.0'
+    seleniumVersion = '4.5.3'
+    chromeDriverVersion = '106.0.5249.61'
+    geckoDriverVersion = '0.31.0'
+    junitJupiterVersion = '5.9.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+// mandatory dependencies for using Spock
+//    implementation platform('org.apache.groovy:groovy-bom:4.0.6')
+//    implementation 'org.apache.groovy:groovy'
+//    implementation "org.apache.groovy:groovy-sql"
+//    implementation 'org.springframework.boot:spring-boot-starter'
+        //    implementation 'org.codehaus.groovy:groovy'
+//    compileOnly 'org.projectlombok:lombok'
+//    annotationProcessor 'org.projectlombok:lombok'
+
+//    testImplementation platform("org.spockframework:spock-bom:2.3-groovy-3.0")
+//    testImplementation "org.spockframework:spock-core"
+//    testImplementation "org.spockframework:spock-junit4"
+    // you can remove this if your code does not rely on old JUnit 4 rules
+
+    // If using Spock, need to depend on geb-spock
+    testImplementation "org.gebish:geb-spock:$gebVersion"
+
+    // If using JUnit 5, need to depend on geb-junit5
+    testImplementation "org.gebish:geb-junit5:$gebVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
+
+    // optional dependencies for using Spock
+//    testImplementation "org.hamcrest:hamcrest-core:2.2"   // only necessary if Hamcrest matchers are used
+//    testRuntimeOnly 'net.bytebuddy:byte-buddy:1.12.18' // allows mocking of classes (in addition to interfaces)
+//    testRuntimeOnly "org.objenesis:objenesis:3.3"
+    // allows mocking of classes without default constructor (together with ByteBuddy or CGLIB)
+
+    // dependencies used by examples in this project
+//    testRuntimeOnly "com.h2database:h2:2.1.214"
+//    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // Drivers
+    testImplementation "org.seleniumhq.selenium:selenium-chrome-driver:$seleniumVersion"
+    testImplementation "org.seleniumhq.selenium:selenium-firefox-driver:$seleniumVersion"
+}
+
+webdriverBinaries {
+    chromedriver {
+        version = chromeDriverVersion
+        fallbackTo32Bit = true
+    }
+    geckodriver geckoDriverVersion
+}
+
+drivers.each { driver ->
+    task "${driver}Test"(type: Test) {
+        group JavaBasePlugin.VERIFICATION_GROUP
+
+        outputs.upToDateWhen { false }  // Always run tests
+
+        useJUnitPlatform()
+
+        systemProperty "geb.build.reportsDir", reporting.file("geb/$name")
+        systemProperty "geb.env", driver
+    }
+}
+
+test {
+    dependsOn drivers.collect { tasks["${it}Test"] }
+    enabled = false
+}
+
+tasks.withType(Test) {
+    maxHeapSize = "1g"
+    jvmArgs '-XX:MaxMetaspaceSize=128m'
+    testLogging {
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.withType(GroovyCompile) {
+    groovyOptions.forkOptions.memoryMaximumSize = '256m'
+}
